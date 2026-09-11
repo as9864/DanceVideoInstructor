@@ -67,12 +67,19 @@ class VideoReader:
 
     def _scaled_size(self, raw_w: int, raw_h: int) -> tuple[int, int]:
         if self.max_long_edge is None:
-            return raw_w, raw_h
+            return self._to_even(raw_w), self._to_even(raw_h)
         long_edge = max(raw_w, raw_h)
         if long_edge <= self.max_long_edge:
-            return raw_w, raw_h
+            return self._to_even(raw_w), self._to_even(raw_h)
         scale = self.max_long_edge / long_edge
-        return max(1, round(raw_w * scale)), max(1, round(raw_h * scale))
+        return self._to_even(round(raw_w * scale)), self._to_even(round(raw_h * scale))
+
+    @staticmethod
+    def _to_even(n: int) -> int:
+        # Most codecs (yuv420p chroma subsampling included) require even
+        # width/height; a resize can otherwise round to an odd number and
+        # break encoding downstream (io/video_writer.py).
+        return max(2, n - (n % 2))
 
     @property
     def duration_s(self) -> float:

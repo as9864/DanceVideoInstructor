@@ -56,6 +56,17 @@ class TestVideoReader:
         assert max(frame.image.shape[:2]) <= 32
         assert reader.width <= 32 and reader.height <= 32
 
+    def test_resized_dimensions_are_always_even(self, tiny_video):
+        # yuv420p (io/video_writer.py's encode target) can't handle odd
+        # width/height; a naive round() on the resize scale factor can land
+        # on an odd number, which then crashes libx264 downstream.
+        reader = VideoReader(tiny_video, max_long_edge=33)  # picked to force an odd rounding
+        assert reader.width % 2 == 0
+        assert reader.height % 2 == 0
+        frame = next(iter(reader))
+        assert frame.image.shape[0] % 2 == 0
+        assert frame.image.shape[1] % 2 == 0
+
     def test_target_fps_downsamples(self, tiny_video):
         # source is 10fps/20 frames (2.0s) -> 5fps should yield ~10 frames, not 20
         reader = VideoReader(tiny_video, target_fps=5.0)
