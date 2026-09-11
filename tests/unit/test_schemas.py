@@ -79,7 +79,7 @@ class TestPoseSequence:
 
 class TestSkeletonSpec:
     def test_default_canonical_skeleton(self):
-        assert DVI_CANONICAL_V1.n_joints == 21
+        assert DVI_CANONICAL_V1.n_joints == 23
         assert DVI_CANONICAL_V1.is_derived("spine_mid")
         assert not DVI_CANONICAL_V1.is_derived("pelvis")
 

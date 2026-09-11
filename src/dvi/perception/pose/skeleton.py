@@ -35,6 +35,8 @@ COCO17_JOINT_NAMES: tuple[str, ...] = (
 # raw COCO-17 name -> DVI-Canonical name, for joints with a direct 1:1 match
 _COCO17_DIRECT: dict[str, str] = {
     "nose": "nose",
+    "ear_l": "ear_l",
+    "ear_r": "ear_r",
     "shoulder_l": "shoulder_l",
     "shoulder_r": "shoulder_r",
     "elbow_l": "elbow_l",
@@ -59,6 +61,8 @@ COCO17_SKELETON_SPEC = SkeletonSpec(
         "spine_mid",
         "neck",
         "nose",
+        "ear_l",
+        "ear_r",
         "shoulder_l",
         "shoulder_r",
         "elbow_l",

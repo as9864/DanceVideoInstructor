@@ -88,6 +88,8 @@ def build_synthetic_standing_pose(
     spine_mid = _spine_mid_offset(pelvis, neck, spine_kyphosis_deg)
     head_top = neck + 0.25 * torso_dir
     nose = head_top + np.array([0.0, -0.05, 0.08])
+    ear_l = head_top - _SIDE * 0.08 + np.array([0.0, -0.05, 0.0])
+    ear_r = head_top + _SIDE * 0.08 + np.array([0.0, -0.05, 0.0])
 
     hip_l = pelvis - _SIDE * hip_width_m / 2
     hip_r = pelvis + _SIDE * hip_width_m / 2
@@ -112,6 +114,8 @@ def build_synthetic_standing_pose(
         "neck": neck,
         "head_top": head_top,
         "nose": nose,
+        "ear_l": ear_l,
+        "ear_r": ear_r,
         "shoulder_l": shoulder_l,
         "shoulder_r": shoulder_r,
         "elbow_l": elbow_l,
