@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+data/raw/
+data/interim/
+data/outputs/
+!data/reference/.gitkeep
+models/*
+!models/.gitkeep
+
+.env

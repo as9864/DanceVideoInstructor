@@ -1,0 +1,9 @@
+# Tier B — 2D + 3D lifting (ARCHITECTURE.md §5.1, ADR-0001 §3 C2).
+# Deprioritized: the MotionBERT-class lifter has no official HF distribution (poor reproducibility, NFR-03).
+# Kept only as a benchmark control candidate for the M2 backend bake-off.
+tier: tier_b
+name: rtmpose_motionbert
+provides_3d: true
+provides_world_frame: false
+skeleton_format: halpe26
+license: unverified   # docs/licenses.md — MotionBERT license not yet confirmed

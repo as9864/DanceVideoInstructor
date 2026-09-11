@@ -1,0 +1,11 @@
+# Tier C — world-grounded mesh recovery (ARCHITECTURE.md §5.1, ADR-0001 §3/§7).
+# Provisional 1st choice per ADR-0001 (status: Proposed, not yet Accepted — confirm after M2 bake-off).
+# provides_world_frame=true lets GravityAlign be skipped (ARCHITECTURE.md §5.2 priority 1).
+# Non-commercial: depends on the SMPL body model license (docs/licenses.md §2). Fine for v1 (local personal tool).
+tier: tier_c
+name: gvhmr
+provides_3d: true
+provides_world_frame: true
+skeleton_format: smpl
+license: non_commercial   # SMPL-dependent
+max_subjects: 2           # ADR-0001 §3 — GVHMR runs per-track; couples processed sequentially (NFR-01 impact)

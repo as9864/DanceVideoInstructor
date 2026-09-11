@@ -1,0 +1,22 @@
+# Pipeline defaults (ARCHITECTURE.md §8). Overridden by CLI flags.
+schema_version: "0.1"
+
+style_profile: salon
+backend: tier_a
+
+video:
+  target_fps: null        # null = keep source fps
+  max_resolution: 1080     # analysis resolution cap (long edge, px)
+
+smoothing:
+  offline_filter: savgol   # ARCHITECTURE.md §5.4
+  realtime_filter: one_euro
+  confidence_gate: 0.3     # joints below this confidence are marked invalid
+
+segmentation:
+  min_duration_s: 0.3      # ARCHITECTURE.md §7.2 — ignore spikes shorter than this
+  merge_gap_s: 0.5
+
+cache:
+  enabled: true
+  dir: data/interim/cache

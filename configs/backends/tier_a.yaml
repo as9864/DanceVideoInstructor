@@ -1,0 +1,10 @@
+# Tier A — lightweight 2D backend (ARCHITECTURE.md §5.1, ADR-0001 §3).
+# M1 scaffold candidate: usyd-community/vitpose-plus-base (no foot keypoints — fine for skeleton-render milestone).
+# Must switch to a Halpe-26 model (e.g. RTMPose ONNX, pocketpose/onnx-models) before M3 (AXI metrics need feet).
+tier: tier_a
+name: vitpose_plus_base
+provides_3d: false
+provides_world_frame: false
+skeleton_format: coco17   # TODO: halpe26 once swapped for AXI support (ADR-0001 C1)
+hf_repo: usyd-community/vitpose-plus-base
+license: Apache-2.0

@@ -1,0 +1,23 @@
+# Style profile: salon (ARCHITECTURE.md §6.6). All targets are hypotheses (PROJECT.md §7) —
+# to be recalibrated against expert labels (V4/V5) once collected.
+style: salon
+targets:
+  POS-01: { min: 0.0, max: 5.0, unit: deg, tolerance: 2.0 }
+  POS-02: { max: 3.0, unit: deg }
+  POS-03: { max: 8.0, unit: deg }
+  POS-04: { max: 0.12, unit: normalized }
+  POS-05a: { max: 0.10, unit: normalized }
+  POS-05b: { max: 3.0, unit: deg }
+  POS-06: { max: 0.05, unit: normalized }
+  AXI-01: { max: 0.05, unit: normalized }
+  AXI-02: { max: 0.02, unit: normalized }
+  AXI-04: { min: 165.0, max: 178.0, unit: deg }
+  AXI-06: { max: 4.0, unit: deg }
+  CPL-01: { max: 0.15, unit: coefficient_of_variation }
+  CPL-03: { min: 5.0, max: 20.0, unit: deg }
+  CPL-04: { max: 0.12, unit: seconds }
+weights:
+  posture: 0.35
+  axis: 0.35
+  dissociation: 0.10
+  couple: 0.20
