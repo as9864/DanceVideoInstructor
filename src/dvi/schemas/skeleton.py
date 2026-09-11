@@ -40,6 +40,32 @@ DVI_CANONICAL_JOINTS: tuple[str, ...] = (
 # derivation rules (e.g. spine_mid = (pelvis + neck) / 2, ARCHITECTURE.md §4.3).
 DEFAULT_DERIVED_JOINTS: frozenset[str] = frozenset({"spine_mid"})
 
+# Bone topology for overlay drawing and any future joint-parent geometry.
+# Not part of SkeletonSpec itself — a backend adapter may only populate a
+# subset of these pairs, so consumers must skip bones with a missing endpoint.
+CANONICAL_BONES: tuple[tuple[str, str], ...] = (
+    ("pelvis", "spine_mid"),
+    ("spine_mid", "neck"),
+    ("neck", "head_top"),
+    ("neck", "nose"),
+    ("neck", "shoulder_l"),
+    ("neck", "shoulder_r"),
+    ("shoulder_l", "elbow_l"),
+    ("elbow_l", "wrist_l"),
+    ("shoulder_r", "elbow_r"),
+    ("elbow_r", "wrist_r"),
+    ("pelvis", "hip_l"),
+    ("pelvis", "hip_r"),
+    ("hip_l", "knee_l"),
+    ("knee_l", "ankle_l"),
+    ("ankle_l", "heel_l"),
+    ("ankle_l", "foot_index_l"),
+    ("hip_r", "knee_r"),
+    ("knee_r", "ankle_r"),
+    ("ankle_r", "heel_r"),
+    ("ankle_r", "foot_index_r"),
+)
+
 
 class SkeletonSpec(BaseModel):
     """Which canonical joints a given backend/adapter actually populates.

@@ -63,12 +63,12 @@ def check_torch() -> bool:
     print(f"[INFO] torch {torch.__version__} (built for CUDA {torch.version.cuda})")
 
     if not torch.cuda.is_available():
-        print("[FAIL] torch.cuda.is_available() is False — CUDA build/driver mismatch")
+        print("[FAIL] torch.cuda.is_available() is False - CUDA build/driver mismatch")
         return False
 
     device_name = torch.cuda.get_device_name(0)
     capability = torch.cuda.get_device_capability(0)
-    print(f"[OK] CUDA available — device: {device_name}, compute capability: {capability}")
+    print(f"[OK] CUDA available - device: {device_name}, compute capability: {capability}")
 
     try:
         x = torch.randn(4, 4, device="cuda")
@@ -82,6 +82,13 @@ def check_torch() -> bool:
 
 
 def main() -> int:
+    # Windows consoles often default to a non-UTF-8 codepage (e.g. cp949 on
+    # Korean locales); this tool prints Korean text elsewhere (FR-08 coaching
+    # messages), so force UTF-8 stdout instead of crashing on the first
+    # non-ASCII character it hits.
+    if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+        sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+
     print("=== DanceVideoInstructor environment check ===")
     results = {
         "python": check_python(),

@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import typer
+
+# Windows consoles often default to a non-UTF-8 codepage (e.g. cp949 on
+# Korean locales); coaching output (FR-08) is Korean text, so force UTF-8
+# stdout/stderr instead of crashing on the first non-ASCII character.
+for _stream in (sys.stdout, sys.stderr):
+    if _stream.encoding and _stream.encoding.lower() != "utf-8":
+        _stream.reconfigure(encoding="utf-8", errors="backslashreplace")
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 
