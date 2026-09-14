@@ -78,3 +78,34 @@ class ViTPoseTierABackend:
             skeleton=COCO17_SKELETON_SPEC,
             image_size=(width, height),
         )
+
+    @torch.no_grad()
+    def infer_frame_boxes(
+        self, image_rgb: np.ndarray, boxes_xywh: list[tuple[float, float, float, float]]
+    ) -> list[tuple[np.ndarray, np.ndarray]]:
+        """Multi-person, single-frame: one canonical (keypoints, confidence)
+        pair per box, in the same order as `boxes_xywh`.
+
+        For experimenting with couple/multi-person footage (ARCHITECTURE.md
+        §5.3 Detect->Track->RoleAssigner isn't built yet — this is a
+        per-frame-only preview, boxes must come from an external detector
+        and there's no identity continuity across frames).
+        """
+        if not boxes_xywh:
+            return []
+
+        image = Image.fromarray(image_rgb)
+        boxes = [[list(b) for b in boxes_xywh]]  # one image, N person boxes, COCO xywh
+
+        inputs = self.processor(image, boxes=boxes, return_tensors="pt").to(self.device)
+        dataset_index = torch.tensor([COCO_DATASET_INDEX] * len(boxes_xywh), device=self.device)
+        outputs = self.model(**inputs, dataset_index=dataset_index)
+        results = self.processor.post_process_pose_estimation(outputs, boxes=boxes)[0]
+
+        out = []
+        for result in results:
+            kpts = result["keypoints"].cpu().numpy()
+            scores = result["scores"].cpu().numpy()
+            canon_kpts, canon_conf, _ = map_coco17_to_canonical(kpts, scores)
+            out.append((canon_kpts, canon_conf))
+        return out
