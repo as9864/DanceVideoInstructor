@@ -14,3 +14,24 @@ templates:
     major: "정지 구간에서 축이 심하게 흔들립니다 (표준편차 {value:.2f}). 지지 다리 무릎과 발목의 미세 조정을 줄여보세요."
   CPL-01:
     major: "두 사람 사이 거리가 불안정합니다 (변동계수 {value:.2f}, 목표 {target} 이하)."
+
+# Real-time cues for `dvi live` (ARCHITECTURE.md §11). Short enough to read mid-step.
+# `high` = above the target max (or |value| above max for side-less metrics), `low` = below min.
+# {side} = "왼쪽"/"오른쪽" from the dancer's point of view (front camera only).
+live:
+  POS-01:
+    high: "상체가 앞으로 쏠렸어요 — 명치를 세우고 골반 위에 쌓으세요"
+    low: "상체가 뒤로 젖혀졌어요 — 가슴을 살짝 앞으로 보내세요"
+  POS-02:
+    high: "상체가 {side}으로 기울었어요 — 양 옆구리 길이를 같게"
+  POS-04:
+    high: "머리가 앞으로 나왔어요 — 귀를 어깨 위로 올려두세요"
+  POS-05a:
+    high: "어깨가 올라갔어요 — 어깨를 내리고 목을 길게"
+  POS-05b:
+    high: "{side} 어깨가 올라갔어요 — 어깨선을 수평으로"
+  AXI-04:
+    high: "지지 무릎이 잠겼어요 — 무릎을 살짝 풀어주세요"
+    low: "지지 무릎이 너무 굽혀졌어요 — 바닥을 밀며 서 보세요"
+  AXI-06:
+    high: "축이 지지발에서 벗어났어요 — 체중이 실린 발 위에 몸을 쌓으세요"

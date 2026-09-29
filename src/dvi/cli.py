@@ -81,11 +81,125 @@ def reference_compare(
 
 @app.command()
 def live(
-    backend: str = typer.Option("tier_a", help="Pose backend tier (causal only)"),
-    style: str = typer.Option("salon"),
+    source: str = typer.Option(
+        "0", help="Camera index (0, 1, ...), phone IP-camera/RTSP URL, or a video file to replay"
+    ),
+    view: str = typer.Option(
+        "side", help="Camera placement: side (forward lean, head, knee) | front (side lean, shoulder tilt)"
+    ),
+    style: str = typer.Option("salon", help="Style profile: salon | milonguero | nuevo"),
+    backend: str = typer.Option("tier_a", help="Pose backend tier (only tier_a is causal/fast enough)"),
+    display: str = typer.Option("auto", help="auto | window | browser | none"),
+    host: str = typer.Option("127.0.0.1", help="Browser display bind address (0.0.0.0 = viewable from a phone)"),
+    port: int = typer.Option(8765, help="Browser display port"),
+    mirror: bool = typer.Option(None, help="Mirror the image (default: on for a local webcam)"),
+    vertical_hint: str = typer.Option(
+        None, help='Camera roll fix: "x1,y1,x2,y2" pixels on a truly vertical line (door frame, pillar)'
+    ),
+    calibration_s: float = typer.Option(3.0, help="Seconds of neutral standing to record the shoulder baseline"),
+    max_long_edge: int = typer.Option(960, help="Downscale frames to this long edge before inference"),
+    beep: bool = typer.Option(True, help="Sound a short beep when a warning fires"),
+    record: Path = typer.Option(None, help="Also save the HUD video to this .mp4"),
+    max_frames: int = typer.Option(None, help="Stop after N frames (testing)"),
+    device: str = typer.Option(None, help="torch device override (cuda / cpu)"),
 ) -> None:
-    """Real-time webcam feedback (PROJECT.md S4, M8)."""
-    _not_implemented("live", "M8")
+    """Real-time camera feedback on tango posture and axis (PROJECT.md S4, ARCHITECTURE.md §11)."""
+    from dvi.config.loader import load_defaults, load_live_messages, load_style_targets
+    from dvi.geometry.gravity import manual_calibration_from_vertical_line
+    from dvi.io.webcam import open_source
+    from dvi.pipeline import stream_runner
+    from dvi.realtime import display as displays
+    from dvi.realtime.metrics2d import CameraView
+
+    if backend != "tier_a":
+        typer.echo(f"backend {backend!r} is not causal/real-time capable; only tier_a is supported for live.")
+        raise typer.Exit(code=2)
+    try:
+        camera_view = CameraView(view)
+        targets = load_style_targets(style)
+    except ValueError as e:
+        typer.echo(f"error: {e}")
+        raise typer.Exit(code=2)
+
+    roll_deg = 0.0
+    if vertical_hint:
+        try:
+            x1, y1, x2, y2 = (float(v) for v in vertical_hint.split(","))
+            roll_deg = manual_calibration_from_vertical_line((x1, y1), (x2, y2)).metadata["roll_deg"]
+        except ValueError as e:
+            typer.echo(f"error: --vertical-hint must be 'x1,y1,x2,y2' ({e})")
+            raise typer.Exit(code=2)
+
+    segmentation = load_defaults().get("segmentation", {})
+
+    typer.echo("loading pose model (Tier A ViTPose, first run downloads weights)...")
+    from dvi.realtime.estimators import ViTPoseLiveEstimator
+    from dvi.realtime.session import LiveSession
+
+    estimator = ViTPoseLiveEstimator(device=device)
+    typer.echo(f"pose model on {estimator.device}")
+
+    try:
+        frames = open_source(source, max_long_edge=max_long_edge, mirror=mirror)
+    except (RuntimeError, FileNotFoundError) as e:
+        typer.echo(f"error: {e}")
+        raise typer.Exit(code=1)
+    mirrored = bool(getattr(frames, "mirror", False))
+
+    session = LiveSession(
+        estimator,
+        targets,
+        load_live_messages(),
+        view=camera_view,
+        roll_deg=roll_deg,
+        calibration_s=calibration_s,
+        mirrored=mirrored,
+        hold_s=float(segmentation.get("min_duration_s", 0.3)),
+        release_s=float(segmentation.get("merge_gap_s", 0.5)),
+    )
+
+    if display == "auto":
+        display = "window" if displays.gui_available() else "browser"
+    if display == "window":
+        out: displays.Display = displays.WindowDisplay()
+        typer.echo("window display: q = quit, c = re-measure neutral posture")
+    elif display == "browser":
+        out = displays.BrowserDisplay(host=host, port=port)
+        typer.echo(f"open {out.url} (q = quit, c = re-measure neutral posture, Ctrl+C here also quits)")
+    elif display == "none":
+        out = displays.NullDisplay()
+    else:
+        typer.echo(f"error: unknown display {display!r}")
+        raise typer.Exit(code=2)
+
+    def on_cue(fb) -> None:
+        typer.echo(f"[{fb.metric_id}] {fb.message or fb.direction}")
+        if beep:
+            stream_runner.beep()
+
+    typer.echo(f"style={style} view={camera_view.value} — stand relaxed for {calibration_s:g}s to calibrate")
+    try:
+        stats = stream_runner.run_live(
+            frames,
+            session,
+            out,
+            header=f"{style} · {camera_view.value}",
+            record_path=record,
+            record_fps=float(getattr(frames, "fps", 30.0)),
+            max_frames=max_frames,
+            on_cue=on_cue,
+        )
+    finally:
+        frames.close()
+        out.close()
+
+    p50, p95 = stats.latency_p50_p95()
+    typer.echo(
+        f"{stats.frames} frames, {stats.fps:.1f} fps, latency p50={p50:.0f}ms p95={p95:.0f}ms, "
+        f"{len(stats.cues)} warnings"
+    )
+    if record:
+        typer.echo(f"wrote {record}")
 
 
 @app.command("eval")

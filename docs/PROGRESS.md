@@ -8,7 +8,7 @@
 | 문서 버전 | v0.1 |
 | 작성일 | 2026-09-13 |
 | 대상 커밋 | `f8784ec` (마지막) ~ `f8a5fbc` (첫) |
-| 테스트 현황 | 126 passed (`uv run pytest -q`) |
+| 테스트 현황 | 167 passed (`uv run pytest -q`) |
 
 ---
 
@@ -28,7 +28,8 @@ M0(스캐폴드)~M1(단일 인물 스켈레톤)은 완료, M2(중력 정렬)·M3
 | **M3. 자세·축 지표** | 지표 그래프 산출, 눈으로 검증 | 🟡 부분 — POS 6개·AXI 4개 지표 함수는 합성 데이터로 검증 완료. **실제 파이프라인/CLI에 연결 안 됨**, 그래프 시각화 없음 |
 | **M4. 커플 확장** | 다중 추적, 역할 분류, CPL-* 지표 | ⬜ 미착수 — `perception/detect/`, `perception/track/`는 빈 패키지 |
 | **M5. 채점 + 리포트** | 루브릭, 문제 검출, JSON/HTML 리포트 | ⬜ 미착수 |
-| **M6~M8** | 평가 하네스 / 레퍼런스 비교 / 실시간 | ⬜ 미착수 (M6은 일관성 하네스만 부분 준비, §4 참고) |
+| **M6~M7** | 평가 하네스 / 레퍼런스 비교 | ⬜ 미착수 (M6은 일관성 하네스만 부분 준비, §4 참고) |
+| **M8. 실시간** | S4 시나리오, NFR-02 | 🟡 1차 구현 — `dvi live` (§4.4). 합성 입력·가짜 추정기로 전 구간 검증, **실제 카메라+GPU 실측(NFR-02 150ms) 미완** |
 
 ---
 
@@ -103,6 +104,24 @@ ADR-0001 §5가 요구하는 실제 절차(정면/45°/측면 동시촬영 + GVH
 
 **중요한 제약**: 이 지표들은 전부 **합성 데이터로만 검증**되었다. 실제 영상 기반 검증은 Tier A(COCO-17)에 발 관절이 없어 AXI-01/06 같은 발 의존 지표는 진짜 영상에 적용 불가능하고, M3을 완결하려면 ADR-0001의 Halpe-26급 백엔드 교체가 선행돼야 한다.
 
+### 4.4 — M8: 실시간 카메라 피드백 (`dvi live`)
+
+카메라 촬영 중 매 프레임 자세·축을 판정해 HUD + 경고음으로 알려주는 경로. ARCHITECTURE.md §11의 제약(티어 A, One-Euro, 세션 시작 시 1회 캘리브레이션, causal 지표만, HUD+임계값 경고)을 그대로 따른다.
+
+| 구성 | 파일 | 내용 |
+| --- | --- | --- |
+| 입력 | [io/webcam.py](../src/dvi/io/webcam.py) | 웹캠/휴대폰 IP카메라 URL은 **최신 프레임만 유지**(추론이 느리면 밀린 프레임을 버림 — 큐잉하면 지연이 계속 누적), 영상 파일은 전 프레임 순차 재생 |
+| 스무딩 | [geometry/smoothing.py](../src/dvi/geometry/smoothing.py) | One-Euro 필터 (벡터화, 관절별 마스크, 불균일 타임스탬프) |
+| 지표 | [realtime/metrics2d.py](../src/dvi/realtime/metrics2d.py) | POS-01/02/04/05a/05b, AXI-04/06의 **프레임 단위 2D 근사**. 카메라 배치(`side`/`front`)별로 관측 가능한 지표만 계산 |
+| 판정 | [realtime/feedback.py](../src/dvi/realtime/feedback.py) | 스타일 프로파일 목표 대비 ok/minor/major, 히스테리시스(0.3s 지속 시 경고, 0.5s 복귀 시 해제 — default.yaml segmentation 값 재사용), 지표별 4초 쿨다운, 우선순위(축 먼저) |
+| 세션 | [realtime/session.py](../src/dvi/realtime/session.py) | 추정 → 필터 → 캘리브레이션(3초 기준 자세, POS-05a baseline = p90) → 지표 → 판정. 이전 프레임 키포인트로 다음 프레임 박스를 잡는 top-down 추적(검출기 없이 사람을 크게 크롭) |
+| 표시 | [realtime/hud.py](../src/dvi/realtime/hud.py), [realtime/display.py](../src/dvi/realtime/display.py) | OpenCV 5 내장 유니코드 폰트로 한글 HUD. headless OpenCV라 기본은 **브라우저 MJPEG 화면**(stdlib HTTP 서버), GUI OpenCV가 있으면 창 |
+| 러너 | [pipeline/stream_runner.py](../src/dvi/pipeline/stream_runner.py) | 루프, 녹화, 경고음, fps/지연 통계 |
+
+**2D 근사를 택한 이유**: 오프라인 지표는 WORLD_G(3D, 중력 정렬)를 요구하지만 실시간 경로엔 3D 리프팅이 없다(Lift3D는 non-causal, 티어 B/C는 느림). 카메라 평면에 투영된 각도는 카메라가 보는 면에서만 의미가 있으므로, 측면 카메라에서 전후 기울기를, 정면 카메라에서 좌우 기울기를 재는 식으로 **배치에 따라 지표를 제한**했다. 중력 방향은 "화면 수직 + 선택적 롤 보정(`--vertical-hint` → `manual_calibration_from_vertical_line`)"으로 둔다.
+
+**검증 수준**: 합성 2D 스켈레톤으로 각 지표가 넣은 각도를 정확히 읽는지(양쪽 진행 방향, 카메라 롤 보정 포함), 피드백 상태기계(단발 스파이크 무시, 해제, 쿨다운, 좌우 표현), 세션·러너 전 구간(가짜 추정기 + 녹화)을 테스트했다. ViTPose 어댑터는 같은 아키텍처의 랜덤 초기화 모델로 호출 계약만 확인했다 — 이 세션 환경에서는 Hugging Face 접근이 막혀 실제 가중치로 돌려보지 못했다. **실제 웹캠 + RTX 5070 Ti에서 fps/지연(NFR-02: 150ms 이하, 24fps 이상)과 실사 영상의 지표 타당성은 아직 확인 전**이다.
+
 ---
 
 ## 4. 발견된 실제 버그 (수정 완료)
@@ -123,10 +142,10 @@ ADR-0001 §5가 요구하는 실제 절차(정면/45°/측면 동시촬영 + GVH
 
 ```
 src/dvi/
-├─ cli.py                    ✅ 골격 (check-env만 실동작, 나머지는 마일스톤 명시된 스텁)
+├─ cli.py                    ✅ 골격 (check-env, live 실동작, 나머지는 마일스톤 명시된 스텁)
 ├─ schemas/                  ✅ 전체 (Frame, PoseSequence, MetricResult, Finding, AnalysisReport ...)
 ├─ pipeline/                 ✅ Stage 프로토콜, ArtifactStore 캐시, BatchRunner
-├─ io/                       ✅ video_reader, video_writer
+├─ io/                       ✅ video_reader, video_writer, webcam(실시간 입력)
 ├─ perception/
 │  ├─ pose/                  ✅ base(Pose2D), skeleton(COCO17 매핑), tier_a_vitpose
 │  ├─ detect/                ⬜ 빈 패키지 (M4)
@@ -136,7 +155,8 @@ src/dvi/
 ├─ segment/                  ⬜ 빈 패키지
 ├─ scoring/                  ⬜ 빈 패키지
 ├─ report/                   🟡 overlay만 (json_report, html 없음)
-└─ reference/                ⬜ 빈 패키지 (M7)
+├─ reference/                ⬜ 빈 패키지 (M7)
+└─ realtime/                 🟡 dvi live — 2D 실시간 지표, 피드백, HUD, 브라우저/창 표시 (§4.4)
 
 eval/harness.py               🟡 angle_consistency만 (라벨 상관 분석은 라벨 없어서 미착수)
 ```
